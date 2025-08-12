@@ -1,0 +1,409 @@
+openapi: 3.0.0
+info:
+  title: DFTB+ Optimization MCP Server API
+  description: |
+    This is the API documentation for the DFTB+ Optimization MCP Server.
+    The server provides a Model Context Protocol (MCP) interface for performing
+    quantum chemistry calculations using the DFTB+ package.
+    
+    ## Features
+    - Geometry optimization of crystal structures
+    - Support for GFN1-xTB and GFN2-xTB methods
+    - Caching for improved performance
+    - Real-time WebSocket communication
+    - RESTful API for HTTP-based interactions
+    
+    ## Authentication
+    Currently, the API does not require authentication. This may change in future versions.
+  version: 1.0.0
+  contact:
+    name: DFTB-Opt Team
+    email: support@dftbopt.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://api.dftbopt.com
+    description: Production server
+
+paths:
+  /health:
+    get:
+      tags:
+        - System
+      summary: Health Check
+      description: Check if the server is running and healthy
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: 2024-01-01T00:00:00.000Z
+                  version:
+                    type: string
+                    example: 1.0.0
+
+  /api/v1/tools:
+    get:
+      tags:
+        - MCP Tools
+      summary: List Available Tools
+      description: Get a list of all available MCP tools
+      responses:
+        '200':
+          description: List of tools
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tools:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ToolDefinition'
+
+  /api/v1/mcp:
+    post:
+      tags:
+        - MCP Protocol
+      summary: MCP Request Handler
+      description: Handle MCP protocol requests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MCPRequest'
+      responses:
+        '200':
+          description: MCP response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPResponse'
+
+  /api/v1/optimize:
+    post:
+      tags:
+        - Optimization
+      summary: Direct Optimization
+      description: Perform DFTB+ geometry optimization directly
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DFTBOptimizationRequest'
+      responses:
+        '200':
+          description: Optimization result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DFTBOptimizationResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  error_message:
+                    type: string
+                    example: Structure file is required
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  error_message:
+                    type: string
+                    example: DFTB+ calculation failed
+
+  /:
+    get:
+      tags:
+        - System
+      summary: Server Information
+      description: Get basic server information and available endpoints
+      responses:
+        '200':
+          description: Server information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: DFTB+ MCP Server
+                  version:
+                    type: string
+                    example: 1.0.0
+                  endpoints:
+                    type: object
+                    properties:
+                      health:
+                        type: string
+                        example: /health
+                      tools:
+                        type: string
+                        example: /api/v1/tools
+                      mcp:
+                        type: string
+                        example: /api/v1/mcp
+                      optimize:
+                        type: string
+                        example: /api/v1/optimize
+
+components:
+  schemas:
+    ToolDefinition:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Tool name
+          example: dftb_optimize
+        description:
+          type: string
+          description: Tool description
+          example: Perform DFTB+ geometry optimization on crystal structures
+        inputSchema:
+          type: object
+          description: JSON Schema for tool input
+          properties:
+            type:
+              type: string
+              example: object
+            properties:
+              type: object
+              description: Input parameter definitions
+            required:
+              type: array
+              description: Required parameter names
+              example: ["structure_file"]
+
+    MCPRequest:
+      type: object
+      required:
+        - jsonrpc
+        - id
+        - method
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+          description: JSON-RPC version
+        id:
+          oneOf:
+            - type: string
+            - type: number
+          description: Request ID
+        method:
+          type: string
+          description: Method name
+          example: tools/call
+        params:
+          type: object
+          description: Method parameters
+          properties:
+            name:
+              type: string
+              description: Tool name
+              example: dftb_optimize
+            arguments:
+              type: object
+              description: Tool arguments
+              properties:
+                structure_file:
+                  type: string
+                  description: Base64 encoded CIF content
+                  example: ZGF0YV90ZXN0...
+                method:
+                  type: string
+                  enum: ["GFN1-xTB", "GFN2-xTB"]
+                  description: Calculation method
+                fmax:
+                  type: number
+                  description: Force convergence threshold
+                  example: 0.1
+                original_filename:
+                  type: string
+                  description: Original filename
+                  example: test.cif
+
+    MCPResponse:
+      type: object
+      required:
+        - jsonrpc
+        - id
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+          description: JSON-RPC version
+        id:
+          oneOf:
+            - type: string
+            - type: number
+            - type: null
+          description: Response ID
+        result:
+          type: object
+          description: Successful result
+        error:
+          type: object
+          description: Error information
+          properties:
+            code:
+              type: integer
+              description: Error code
+              example: -32603
+            message:
+              type: string
+              description: Error message
+              example: Tool execution failed
+            data:
+              type: object
+              description: Error data
+
+    DFTBOptimizationRequest:
+      type: object
+      required:
+        - structure_file
+      properties:
+        structure_file:
+          type: string
+          description: Base64 encoded content of the CIF structure file to optimize
+          example: ZGF0YV90ZXN0X25hbWUKX2NlbGxfbGVuZ3RoX2EgMTAuMApfY2VsbF9hbmdsZV9hbHBoYSA5MC4wCl9jZWxsX2JldGEgOTAuMApfY2VsbF9nYW1tYSA5MC4wCmxvb3BfCiBfYXRvbV9zaXRlX2xhYmVsCiBfYXRvbV9zaXRlX3R5cGVfc3ltYm9sCiBfYXRvbV9zaXRlX2ZyYWN0X3gKIF9hdG9tX3NpdGVfZnJhY3RfeQogX2F0b21fc2l0ZV9mcmFjdF96CiBfYXRvbV9zaXRlX1VfaXNvX29yX2VxdWl2CiBDMSAgQyAgMC4wMDAgMC4wMDAgMC4wMDAgMC4wMQ==
+        method:
+          type: string
+          enum: ["GFN1-xTB", "GFN2-xTB"]
+          default: "GFN1-xTB"
+          description: The semi-empirical method to use for the calculation. GFN1-xTB is faster and suitable for most systems, while GFN2-xTB provides better accuracy for certain elements.
+        fmax:
+          type: number
+          default: 0.1
+          description: Force convergence threshold in eV/Angstrom. Lower values result in more accurate optimizations but require more computational time.
+        original_filename:
+          type: string
+          description: Optional original filename for the structure (used for logging and identification)
+          example: benzene.cif
+
+    DFTBOptimizationResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ["success", "error"]
+          description: Request status
+        request_id:
+          type: string
+          description: Unique request identifier
+        input_parameters:
+          type: object
+          properties:
+            original_filename:
+              type: string
+              description: Original filename
+            method:
+              type: string
+              description: Calculation method used
+            fmax_eV_A:
+              type: number
+              description: Force convergence threshold used
+        detailed_results:
+          type: object
+          description: Detailed calculation results
+          properties:
+            summary:
+              type: object
+              properties:
+                warnings:
+                  type: array
+                  items:
+                    type: string
+                  description: Warning messages
+                convergence_status:
+                  type: string
+                  description: Convergence status
+                calculation_status:
+                  type: string
+                  description: Calculation status
+            convergence_info:
+              type: object
+              properties:
+                scc_converged:
+                  type: boolean
+                  description: Whether SCC converged
+            electronic_properties:
+              type: object
+              properties:
+                fermi_level_eV:
+                  type: number
+                  description: Fermi level in eV
+                total_charge:
+                  type: number
+                  description: Total charge
+                dipole_moment_debye:
+                  type: object
+                  properties:
+                    x:
+                      type: number
+                    y:
+                      type: number
+                    z:
+                      type: number
+            energies_eV:
+              type: object
+              description: Energies in eV
+              additionalProperties:
+                type: number
+            energies_hartree:
+              type: object
+              description: Energies in Hartree
+              additionalProperties:
+                type: number
+        optimized_structure_cif_b64:
+          type: string
+          description: Base64 encoded optimized CIF structure
+        error_message:
+          type: string
+          description: Error message if status is error
+
+tags:
+  - name: System
+    description: System endpoints
+  - name: MCP Tools
+    description: MCP tool management
+  - name: MCP Protocol
+    description: MCP protocol endpoints
+  - name: Optimization
+    description: DFTB+ optimization endpoints
