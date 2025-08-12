@@ -377,7 +377,7 @@ fmax=0.05 for moderate accuracy. The structure is in CIF format.
 ### 1. 常见问题
 | 问题 | 原因 | 解决方案 |
 |------|------|----------|
-| DFTB+未找到 | 二进制文件缺失 | 复制dftb+到dftb-binaries目录 |
+| DFTB+未找到 | 镜像构建问题 | 重新构建镜像：`docker-compose build --no-cache` |
 | 端口冲突 | 服务端口占用 | 修改docker-compose.yml端口映射 |
 | 内存不足 | 分子过大 | 增加内存或减少并发数 |
 | 计算超时 | 分子复杂 | 调整timeout参数 |

@@ -47,14 +47,19 @@ git clone <repository-url>
 cd dftbopt-mcp
 ```
 
-### 2. 准备DFTB+二进制文件
+### 2. 验证Docker环境
 
-将DFTB+可执行文件放置在 `dftb-binaries/` 目录中：
+确保Docker和Docker Compose已正确安装：
 
 ```bash
-mkdir -p dftb-binaries
-# 将dftb+可执行文件复制到dftb-binaries/dftb+
+# 验证Docker安装
+docker --version
+
+# 验证Docker Compose安装
+docker-compose --version
 ```
+
+**注意**：DFTB+软件现在会自动在容器构建过程中安装，无需手动准备二进制文件。
 
 ### 3. 启动基础服务
 
@@ -386,7 +391,11 @@ docker-compose logs -f
    ```
    Error: DFTB+ executable not found
    ```
-   解决方案：确保DFTB+二进制文件已正确放置在 `dftb-binaries/` 目录中。
+   解决方案：重新构建镜像，DFTB+会在构建过程中自动安装：
+   ```bash
+   docker-compose build --no-cache
+   docker-compose up -d
+   ```
 
 2. **内存不足**
    ```
@@ -399,6 +408,18 @@ docker-compose logs -f
    Error: port is already allocated
    ```
    解决方案：修改docker-compose.yml中的端口映射或停止占用端口的服务。
+
+4. **镜像构建失败**
+   ```
+   Error: conda install failed
+   ```
+   解决方案：确保网络连接正常，或尝试使用不同的镜像源：
+   ```bash
+   # 清理Docker缓存
+   docker system prune -a
+   # 重新构建
+   docker-compose build --no-cache
+   ```
 
 ### 调试模式
 
